@@ -11,7 +11,7 @@ router.post(
     [
         body('target').notEmpty().isLength({ max: 255 }),
         body('target_type').isIn(['DOMAIN', 'IP']),
-        body('notification_email').isEmail(),
+        body('notification_email').isEmail({ allow_utf8_local_part: false, require_tld: false }).withMessage('Please enter a valid email address'),
         body('protocol').optional().isIn(['HTTP', 'HTTPS', 'PING', 'TCP']),
         body('port').optional().isInt({ min: 1, max: 65535 }),
         body('check_interval_seconds').optional().isInt({ min: 30, max: 86400 }),
@@ -33,7 +33,7 @@ router.patch(
     '/:id',
     [
         param('id').isInt(),
-        body('notification_email').optional().isEmail(),
+        body('notification_email').optional().isEmail({ allow_utf8_local_part: false, require_tld: false }),
         body('check_interval_seconds').optional().isInt({ min: 30, max: 86400 }),
         body('is_active').optional().isBoolean(),
     ],

@@ -5,7 +5,13 @@ let monitors = [];
 async function apiFetch(path, options = {}) {
     const res  = await fetch(API + path, { headers: { 'Content-Type': 'application/json' }, ...options });
     const json = await res.json();
-    if (!res.ok) throw new Error(json.error || json.errors?.[0]?.msg || 'Request failed');
+    if (!res.ok) {
+        if (json.errors?.length) {
+            const msgs = json.errors.map(e => `${e.path ? e.path + ': ' : ''}${e.msg}`).join(', ');
+            throw new Error(msgs);
+        }
+        throw new Error(json.error || 'Request failed');
+    }
     return json;
 }
 
