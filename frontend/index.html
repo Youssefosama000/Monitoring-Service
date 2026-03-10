@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alamar — Monitoring Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ===================== SIDEBAR ===================== -->
+<aside class="sidebar">
+    <div class="sidebar-logo">
+        <div class="logo-icon">A</div>
+        <span>Alamar Monitor</span>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-page="dashboard">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            Dashboard
+        </a>
+        <a href="#" class="nav-item" data-page="monitors">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            My Monitors
+        </a>
+        <a href="#" class="nav-item" data-page="add">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            Add Monitor
+        </a>
+        <a href="#" class="nav-item" data-page="history">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            History
+        </a>
+    </nav>
+</aside>
+
+<!-- ===================== MAIN CONTENT ===================== -->
+<main class="main">
+
+    <!-- TOP BAR -->
+    <header class="topbar">
+        <div class="topbar-title" id="page-title">Dashboard</div>
+        <div class="topbar-actions">
+            <button class="btn btn-primary" onclick="showPage('add')">+ Add Monitor</button>
+        </div>
+    </header>
+
+    <!-- ========== PAGE: DASHBOARD ========== -->
+    <div id="page-dashboard" class="page active">
+
+        <!-- Stats row -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-icon up">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div>
+                    <div class="stat-value" id="stat-up">0</div>
+                    <div class="stat-label">Online</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon down">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </div>
+                <div>
+                    <div class="stat-value" id="stat-down">0</div>
+                    <div class="stat-label">Offline</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon total">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <div>
+                    <div class="stat-value" id="stat-total">0</div>
+                    <div class="stat-label">Total Monitors</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon uptime">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                </div>
+                <div>
+                    <div class="stat-value" id="stat-uptime">—</div>
+                    <div class="stat-label">Avg. Uptime</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monitors Table -->
+        <div class="card">
+            <div class="card-header">
+                <h2>All Monitors</h2>
+                <span class="badge-refresh" id="last-refresh">Refreshing...</span>
+            </div>
+            <table class="monitors-table">
+                <thead>
+                    <tr>
+                        <th>Target</th>
+                        <th>Type</th>
+                        <th>Protocol</th>
+                        <th>Status</th>
+                        <th>Response Time</th>
+                        <th>Alert Email</th>
+                        <th>Last Checked</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="monitors-tbody">
+                    <tr><td colspan="8" class="empty-row">Loading monitors...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ========== PAGE: MY MONITORS ========== -->
+    <div id="page-monitors" class="page">
+        <div class="card">
+            <div class="card-header">
+                <h2>My Monitors</h2>
+            </div>
+            <div id="monitors-cards" class="monitors-grid"></div>
+        </div>
+    </div>
+
+    <!-- ========== PAGE: ADD MONITOR ========== -->
+    <div id="page-add" class="page">
+        <div class="card form-card">
+            <div class="card-header">
+                <h2>Add New Monitor</h2>
+                <p style="color:#888; margin:0; font-size:14px;">Register a domain or IP address to monitor</p>
+            </div>
+
+            <form id="add-monitor-form" onsubmit="submitMonitor(event)">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Target <span class="required">*</span></label>
+                        <input type="text" id="f-target" placeholder="e.g. example.com or 1.2.3.4" required>
+                        <span class="hint">Enter a domain name or an IP address</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Target Type <span class="required">*</span></label>
+                        <select id="f-type" required>
+                            <option value="">Select type...</option>
+                            <option value="DOMAIN">Domain</option>
+                            <option value="IP">IP Address</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Protocol <span class="required">*</span></label>
+                        <select id="f-protocol">
+                            <option value="HTTP">HTTP</option>
+                            <option value="HTTPS" selected>HTTPS</option>
+                            <option value="PING">Ping</option>
+                            <option value="TCP">TCP Port</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="port-group" style="display:none;">
+                        <label>Port</label>
+                        <input type="number" id="f-port" placeholder="e.g. 8080" min="1" max="65535">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Alert Email <span class="required">*</span></label>
+                    <input type="email" id="f-email" placeholder="alerts@yourdomain.com" required>
+                    <span class="hint">Email to notify when this target goes down or recovers</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Check Interval</label>
+                    <select id="f-interval">
+                        <option value="30">Every 30 seconds</option>
+                        <option value="60" selected>Every 1 minute</option>
+                        <option value="300">Every 5 minutes</option>
+                        <option value="600">Every 10 minutes</option>
+                        <option value="1800">Every 30 minutes</option>
+                    </select>
+                </div>
+
+                <div id="form-error" class="form-error" style="display:none;"></div>
+                <div id="form-success" class="form-success" style="display:none;"></div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="showPage('dashboard')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Monitor</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========== PAGE: HISTORY ========== -->
+    <div id="page-history" class="page">
+        <div class="card">
+            <div class="card-header">
+                <h2>Status History</h2>
+                <select id="history-target-select" onchange="loadHistory()" style="padding:6px 12px; border-radius:6px; border:1px solid #e0e0e0; font-size:14px;">
+                    <option value="">Select a monitor...</option>
+                </select>
+            </div>
+            <table class="monitors-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Status</th>
+                        <th>Response Time</th>
+                        <th>HTTP Code</th>
+                        <th>Error</th>
+                    </tr>
+                </thead>
+                <tbody id="history-tbody">
+                    <tr><td colspan="5" class="empty-row">Select a monitor to view history</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</main>
+
+<!-- ========== MODAL: Monitor Detail ========== -->
+<div id="detail-modal" class="modal-overlay" onclick="closeModal(event)">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="modal-title">Monitor Details</h3>
+            <button class="modal-close" onclick="document.getElementById('detail-modal').classList.remove('open')">✕</button>
+        </div>
+        <div id="modal-body" class="modal-body"></div>
+        <div class="modal-footer">
+            <button class="btn btn-danger" id="modal-delete-btn">Delete Monitor</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('detail-modal').classList.remove('open')">Close</button>
+        </div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
