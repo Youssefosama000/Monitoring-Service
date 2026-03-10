@@ -1,80 +1,145 @@
-# Domain / IP Monitoring Service
+# Alamar Monitoring Service
 
-A background service that monitors customer-registered domains and IPs, and sends email alerts when a target goes down or recovers.
+Monitor your domains and IPs 24/7. Get email alerts instantly when anything goes down and when it recovers.
+
+---
+
+## Requirements
+
+Make sure you have these installed before starting:
+
+- [Node.js](https://nodejs.org/) v18 or higher
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (for the database)
+- [Git](https://git-scm.com/)
+
+---
+
+## How to Run the Project
+
+### Step 1 — Clone the repository
+
+```bash
+git clone https://github.com/Youssefosama000/Monitoring-Service.git
+cd Monitoring-Service
+```
+
+### Step 2 — Install dependencies
+
+```bash
+npm install
+```
+
+### Step 3 — Configure environment variables
+
+Copy the example env file and fill in your values:
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` and fill in your SMTP credentials:
+
+```env
+PORT=3000
+
+DB_HOST=localhost
+DB_PORT=5433
+DB_NAME=alamar_monitoring
+DB_USER=alamar
+DB_PASS=alamar123
+
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your_gmail@gmail.com
+SMTP_PASS=your_gmail_app_password
+EMAIL_FROM=alerts@yourdomain.com
+```
+
+> For Gmail: go to https://myaccount.google.com/apppasswords and generate an App Password.
+
+### Step 4 — Start the database
+
+Make sure Docker Desktop is running, then:
+
+```bash
+docker compose up -d
+```
+
+This starts a PostgreSQL database on port 5433 and runs the schema automatically.
+
+Verify it is running:
+
+```bash
+docker ps
+```
+
+You should see `alamar_postgres` with status `Up`.
+
+### Step 5 — Start the server
+
+```bash
+node server.js
+```
+
+You should see:
+
+```
+Alamar Monitoring running at http://localhost:3000
+```
+
+The monitoring worker starts automatically with the server and checks all targets every 60 seconds.
+
+### Step 6 — Open the dashboard
+
+Open your browser and go to:
+
+```
+http://localhost:3000
+```
+
+---
+
+## How to Use
+
+1. Click **Add Monitor** in the sidebar
+2. Enter a domain (e.g. `example.com`) or IP address (e.g. `1.2.3.4`)
+3. Select the type and protocol
+4. Enter the email address to receive alerts
+5. Click **Add Monitor**
+
+The system checks the target immediately and updates the status to **UP** or **DOWN** within seconds.
+
+When a target goes down, an email alert is sent to the address you entered. When it recovers, a second email is sent automatically.
 
 ---
 
 ## Project Structure
 
 ```
-monitoring-service/
+Monitoring-Service/
+├── server.js                   ← Main entry point — starts server + worker
+├── docker-compose.yml          ← PostgreSQL database
+├── .env.example                ← Environment variable template
 ├── database/
-│   └── schema.sql              ← Run this first to set up the DB tables
+│   ├── schema.sql              ← Database tables (auto-loaded by Docker)
+│   └── db.js                   ← Database connection
 ├── api/
-│   ├── routes.js               ← Express API route definitions
-│   └── monitorController.js    ← CRUD logic for monitored targets
+│   ├── routes.js               ← API endpoint definitions
+│   └── monitorController.js    ← Request handlers
 ├── worker/
-│   ├── monitorWorker.js        ← Scheduled worker: fetches targets & runs checks
-│   └── checker.js              ← HTTP / Ping / TCP health check logic
+│   ├── monitorWorker.js        ← Runs health checks on schedule
+│   └── checker.js              ← HTTP / HTTPS / Ping / TCP check logic
 ├── services/
-│   └── emailService.js         ← Sends DOWN and RECOVERY alert emails
-├── .env.example                ← Copy to .env and fill in credentials
-└── README.md
-```
-
----
-
-## Setup Instructions
-
-### 1. Install dependencies
-
-```bash
-npm install express express-validator axios nodemailer pg dotenv
-```
-
-### 2. Configure environment variables
-
-Copy `.env.example` to `.env` and fill in your values:
-
-```env
-# Database
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=alamar_monitoring
-DB_USER=postgres
-DB_PASS=yourpassword
-
-# SMTP Email
-SMTP_HOST=smtp.sendgrid.net
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=apikey
-SMTP_PASS=your_sendgrid_api_key
-EMAIL_FROM=alerts@alamar.com
-```
-
-### 3. Set up the database
-
-```bash
-psql -U postgres -d alamar_monitoring -f database/schema.sql
-```
-
-### 4. Start the API server
-
-```bash
-node app.js
-```
-
-### 5. Run the monitoring worker
-
-The worker should run every 30–60 seconds via a cron job or PM2:
-
-```bash
-# Using cron (every 60 seconds):
-* * * * * node /path/to/monitoring-service/worker/monitorWorker.js
-
-# Using PM2 (recommended for production):
-pm2 start worker/monitorWorker.js --name monitor-worker --cron "* * * * *"
+│   └── emailService.js         ← Sends DOWN and RECOVERY emails
+├── middleware/
+│   └── auth.js                 ← Auth middleware (connect to your auth system)
+├── utils/
+│   └── targetValidator.js      ← Validates domain and IP formats
+└── frontend/
+    ├── index.html              ← Dashboard UI
+    ├── style.css               ← Styles
+    └── app.js                  ← Frontend logic
 ```
 
 ---
@@ -83,74 +148,57 @@ pm2 start worker/monitorWorker.js --name monitor-worker --cron "* * * * *"
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/monitors` | Add a domain or IP to monitor |
-| `GET` | `/api/monitors` | List all monitors for the customer |
+| `GET` | `/api/health` | Health check |
+| `POST` | `/api/monitors` | Add a new domain or IP to monitor |
+| `GET` | `/api/monitors` | List all monitors |
 | `GET` | `/api/monitors/:id` | Get details of one monitor |
 | `PATCH` | `/api/monitors/:id` | Update monitor settings |
 | `DELETE` | `/api/monitors/:id` | Delete a monitor |
 | `GET` | `/api/monitors/:id/history` | Get status check history |
 
-### POST /api/monitors — Request Body
+### POST /api/monitors — Body
 
 ```json
 {
   "target": "example.com",
   "target_type": "DOMAIN",
-  "notification_email": "customer@email.com",
-  "protocol": "HTTP",
+  "notification_email": "alerts@example.com",
+  "protocol": "HTTPS",
   "check_interval_seconds": 60
 }
 ```
 
-| Field | Required | Values | Default |
-|-------|----------|--------|---------|
-| `target` | Yes | domain or IP string | — |
-| `target_type` | Yes | `DOMAIN` or `IP` | — |
-| `notification_email` | Yes | valid email | — |
+| Field | Required | Options | Default |
+|-------|----------|---------|---------|
+| `target` | Yes | domain or IP | — |
+| `target_type` | Yes | `DOMAIN`, `IP` | — |
+| `notification_email` | Yes | any email | — |
 | `protocol` | No | `HTTP`, `HTTPS`, `PING`, `TCP` | `HTTP` |
 | `port` | No | 1–65535 | null |
 | `check_interval_seconds` | No | 30–86400 | `60` |
 
 ---
 
-## How the Worker Operates
+## How Monitoring Works
 
-```
-Every N seconds (via cron):
-│
-├─ Query DB for targets due for a check
-│
-├─ For each target (in parallel, up to 10 at a time):
-│   ├─ Run health check (HTTP/Ping/TCP)
-│   ├─ Update current_status and consecutive_failures in DB
-│   ├─ Insert row into status_history
-│   └─ If status changed to DOWN (after N consecutive fails):
-│       └─ Send DOWN alert email → notification_email
-│       If status changed from DOWN to UP:
-│       └─ Send RECOVERY email → notification_email
-```
-
-### Failure threshold logic
-
-- A single failed check does NOT trigger an alert immediately.
-- The target must fail **2 consecutive checks** (configurable via `failure_threshold`) before the status flips to DOWN and an email is sent.
-- This prevents false alarms from transient network blips.
+- The worker runs every **60 seconds** and checks all active targets
+- When a new monitor is added, it is checked **immediately**
+- A target must fail **2 consecutive checks** before being marked DOWN (prevents false alarms)
+- When a target goes DOWN → email alert is sent
+- When a target recovers back to UP → recovery email is sent
+- All check results are stored in the `status_history` table
 
 ---
 
 ## Email Alerts
 
-Two types of emails are sent automatically:
+Two emails are sent automatically:
 
-### DOWN Alert (sent when target goes offline)
-- **Subject:** `[ALERT] Your domain example.com is DOWN`
-- **Content:** Target name, type, protocol, time detected, error reason
+**DOWN alert subject:** `[ALERT] Your domain example.com is DOWN`
 
-### RECOVERY Alert (sent when target comes back online)
-- **Subject:** `[RESOLVED] Your domain example.com is back UP`
-- **Content:** Target name, recovered timestamp
+**Recovery alert subject:** `[RESOLVED] Your domain example.com is back UP`
 
-All sent emails are logged in the `alert_emails_log` table for audit purposes.
+All emails are logged in the `alert_emails_log` database table.
 
 ---
 
@@ -158,29 +206,21 @@ All sent emails are logged in the `alert_emails_log` table for audit purposes.
 
 | Table | Purpose |
 |-------|---------|
-| `monitored_targets` | Stores all customer-registered domains/IPs with current status |
-| `status_history` | Log of every individual check result (up or down) |
-| `alert_emails_log` | Audit log of every email alert sent |
+| `monitored_targets` | All registered domains and IPs with current status |
+| `status_history` | Every individual check result |
+| `alert_emails_log` | Audit log of all sent emails |
 
 ---
 
-## Dependencies
+## For the Development Team
 
-| Package | Purpose |
-|---------|---------|
-| `express` | API server |
-| `express-validator` | Request validation |
-| `axios` | HTTP health checks |
-| `nodemailer` | Email delivery |
-| `pg` | PostgreSQL client |
-| `dotenv` | Environment config |
-
----
-
-## Notes
-
-1. **Auth middleware** (`middleware/auth.js`) must inject `req.customerId` — connect this to your existing customer authentication system.
-2. **DB client** (`database/db.js`) should export a configured `pg.Pool` instance using the `.env` credentials.
-3. **Target validation** (`utils/targetValidator.js`) should validate IP format (regex) and domain format before insert.
-4. The worker is stateless and safe to run multiple instances — the DB query uses `last_checked_at` to avoid double-checking the same target.
-5. For high scale (1000+ targets), consider replacing the cron worker with a **BullMQ** job queue backed by Redis.
+1. **Auth** — `middleware/auth.js` currently injects a fixed `customer_id = 1`. Replace this with your real session or JWT verification.
+2. **SMTP** — Fill in real credentials in `.env` to enable email alerts. Gmail App Passwords work out of the box.
+3. **Production deployment** — Run `node server.js` with PM2 to keep it alive:
+   ```bash
+   npm install -g pm2
+   pm2 start server.js --name alamar-monitoring
+   pm2 save
+   pm2 startup
+   ```
+4. **Port conflict** — If port 5432 is already in use on your machine, the database uses port 5433 by default (configured in `docker-compose.yml` and `.env`).
