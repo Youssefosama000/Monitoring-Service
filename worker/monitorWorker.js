@@ -79,9 +79,16 @@ async function processTarget(target) {
     if (shouldSendRecovery) await emailService.sendRecoveryAlert(target);
 }
 
-runWorker().catch(err => {
-    console.error('Worker fatal error:', err);
-    process.exit(1);
-});
+async function checkSingleTarget(targetId) {
+    const { rows } = await db.query(`SELECT * FROM monitored_targets WHERE id = $1`, [targetId]);
+    if (rows.length > 0) await processTarget(rows[0]);
+}
 
-module.exports = { runWorker };
+if (require.main === module) {
+    runWorker().catch(err => {
+        console.error('Worker fatal error:', err);
+        process.exit(1);
+    });
+}
+
+module.exports = { runWorker, checkSingleTarget };

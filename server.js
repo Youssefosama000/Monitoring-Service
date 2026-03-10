@@ -28,4 +28,10 @@ app.get('*', (req, res) => {
 // ── Start ──────────────────────────────────────────────────
 app.listen(PORT, () => {
     console.log(`\n Alamar Monitoring running at http://localhost:${PORT}\n`);
+
+    const { runWorker } = require('./worker/monitorWorker');
+
+    // Run immediately on startup, then every 60 seconds
+    runWorker().catch(console.error);
+    setInterval(() => runWorker().catch(console.error), 60 * 1000);
 });

@@ -1,5 +1,6 @@
 const db = require('../database/db');
 const { validateTarget } = require('../utils/targetValidator');
+const { checkSingleTarget } = require('../worker/monitorWorker');
 
 exports.create = async (req, res) => {
     const {
@@ -26,6 +27,9 @@ exports.create = async (req, res) => {
              RETURNING *`,
             [customerId, target, target_type, protocol, port, notification_email, check_interval_seconds]
         );
+        // Fire an immediate check without blocking the response
+        checkSingleTarget(result.rows[0].id).catch(console.error);
+
         return res.status(201).json({ data: result.rows[0] });
     } catch (err) {
         if (err.code === '23505') {
