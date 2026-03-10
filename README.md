@@ -177,7 +177,7 @@ All sent emails are logged in the `alert_emails_log` table for audit purposes.
 
 ---
 
-## Notes for the Developer Team
+## Notes
 
 1. **Auth middleware** (`middleware/auth.js`) must inject `req.customerId` — connect this to your existing customer authentication system.
 2. **DB client** (`database/db.js`) should export a configured `pg.Pool` instance using the `.env` credentials.
